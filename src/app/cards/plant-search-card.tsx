@@ -72,7 +72,7 @@ const PlantSearchCard: FC<ExtensionProps> = ({ actions, context }) => {
 
     try {
       // Call backend API using hubspot.fetch
-      const backendUrl = process.env.BACKEND_URL || "https://your-railway-app.up.railway.app";
+      const backendUrl = "https://plants-production-a263.up.railway.app";
       const url = `${backendUrl}/api/plants/search?q=${encodeURIComponent(searchQuery)}`;
 
       console.log("Fetching from backend URL:", url);
@@ -116,7 +116,7 @@ const PlantSearchCard: FC<ExtensionProps> = ({ actions, context }) => {
     setError(null);
 
     try {
-      const backendUrl = process.env.BACKEND_URL || "https://your-railway-app.up.railway.app";
+      const backendUrl = "https://plants-production-a263.up.railway.app";
       const url = `${backendUrl}/api/plants/${plantId}`;
 
       console.log("Fetching plant details from backend:", url);
@@ -175,7 +175,7 @@ const PlantSearchCard: FC<ExtensionProps> = ({ actions, context }) => {
     setError(null);
 
     try {
-      const backendUrl = process.env.BACKEND_URL || "https://your-railway-app.up.railway.app";
+      const backendUrl = "https://plants-production-a263.up.railway.app";
       const url = `${backendUrl}/api/plants/associate`;
 
       console.log("Creating plant association for contact:", contactId);
