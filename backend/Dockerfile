@@ -2,20 +2,23 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Enable Yarn
+RUN corepack enable
 
-# Install ALL dependencies (explicitly disable production mode)
-RUN npm install --production=false
+# Copy package files
+COPY package.json ./
+
+# Install ALL dependencies with Yarn
+RUN yarn install
 
 # Copy source code
 COPY . .
 
 # Build TypeScript
-RUN npx tsc
+RUN yarn build
 
 # Expose port
 EXPOSE 3000
 
 # Start the app
-CMD ["npm", "start"]
+CMD ["yarn", "start"]
