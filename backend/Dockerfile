@@ -5,14 +5,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies
-RUN npm install
+# Install ALL dependencies (explicitly disable production mode)
+RUN npm install --production=false
 
 # Copy source code
 COPY . .
 
 # Build TypeScript
-RUN npm run build
+RUN npx tsc
 
 # Expose port
 EXPOSE 3000
