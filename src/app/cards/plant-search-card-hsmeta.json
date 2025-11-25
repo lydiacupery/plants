@@ -1,0 +1,11 @@
+{
+  "uid": "plant_search_card",
+  "type": "card",
+  "config": {
+    "name": "Plant Care Assistant",
+    "description": "Search and add plants from the Perenual database to track care schedules",
+    "entrypoint": "/app/cards/plant-search-card.tsx",
+    "location": "crm.record.sidebar",
+    "objectTypes": ["CONTACT"]
+  }
+}

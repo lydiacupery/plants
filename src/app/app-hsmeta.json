@@ -1,0 +1,38 @@
+{
+  "uid": "plant_care_app",
+  "type": "app",
+  "config": {
+    "description": "Plant care tracking app with Perenual API integration",
+    "name": "Plant Care Assistant",
+    "distribution": "private",
+    "auth": {
+      "type": "static",
+      "requiredScopes": [
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.schemas.custom.read",
+        "crm.schemas.custom.write",
+        "crm.objects.custom.read",
+        "crm.objects.custom.write"
+      ],
+      "optionalScopes": [],
+      "conditionallyRequiredScopes": []
+    },
+    "permittedUrls": {
+      "fetch": [
+        "https://api.hubapi.com",
+        "https://perenual.com"
+      ],
+      "iframe": [],
+      "img": [
+        "https://perenual.com"
+      ]
+    },
+    "support": {
+      "supportEmail": "support@example.com",
+      "documentationUrl": "https://example.com/docs",
+      "supportUrl": "https://example.com/support",
+      "supportPhone": "+18005555555"
+    }
+  }
+}

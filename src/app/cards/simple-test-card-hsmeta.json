@@ -1,0 +1,11 @@
+{
+  "uid": "simple_test_card",
+  "type": "card",
+  "config": {
+    "name": "Simple Test Card",
+    "description": "A simple test card to verify setup",
+    "entrypoint": "/app/cards/simple-test-card.jsx",
+    "location": "crm.record.sidebar",
+    "objectTypes": ["CONTACT"]
+  }
+}
