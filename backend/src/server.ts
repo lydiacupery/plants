@@ -128,7 +128,7 @@ app.get('/api/plants/search', async (req: Request, res: Response) => {
       });
     }
 
-    const data: PerenualSearchResponse = await response.json();
+    const data = await response.json() as PerenualSearchResponse;
 
     // Transform the response to a simpler format
     const plants: SimplifiedPlant[] = data.data.map((plant) => ({
@@ -173,7 +173,7 @@ app.get('/api/plants/:id', async (req: Request, res: Response) => {
       });
     }
 
-    const plant: PerenualPlantDetails = await response.json();
+    const plant = await response.json() as PerenualPlantDetails;
 
     // Return formatted plant details
     const plantDetails: PlantDetailsResponse = {
@@ -248,23 +248,27 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     // Create the plant custom object
     const plantObject = await hubspotClient.crm.objects.basicApi.create(
       'plants',
-      { properties: plantProperties }
+      {
+        properties: plantProperties,
+        associations: []
+      }
     );
 
     console.log(`Created plant object with ID: ${plantObject.id}`);
 
-    // Associate the plant with the contact
-    await hubspotClient.crm.objects.associationsApi.create(
+    // Associate the plant with the contact using batch API
+    await hubspotClient.crm.associations.batchApi.create(
       'plants',
-      plantObject.id,
       'contacts',
-      contactId,
-      [
-        {
-          associationCategory: 'HUBSPOT_DEFINED',
-          associationTypeId: 1
-        }
-      ]
+      {
+        inputs: [
+          {
+            _from: { id: plantObject.id },
+            to: { id: contactId },
+            type: 'plants_to_contact'
+          }
+        ]
+      }
     );
 
     console.log(`Associated plant ${plantObject.id} with contact ${contactId}`);

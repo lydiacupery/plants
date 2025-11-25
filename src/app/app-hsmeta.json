@@ -21,7 +21,7 @@
     "permittedUrls": {
       "fetch": [
         "https://api.hubapi.com",
-        "https://perenual.com"
+        "https://your-railway-app.up.railway.app"
       ],
       "iframe": [],
       "img": [
