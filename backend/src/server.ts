@@ -3,7 +3,7 @@ import cors from 'cors';
 import { Client } from '@hubspot/api-client';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // CORS configuration - allow all origins for testing
 app.use(cors({
@@ -291,6 +291,6 @@ function calculateNextWateringDate(wateringPeriod?: string): string {
   return nextDate.toISOString().split('T')[0];
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Plant Care API listening on port ${PORT}`);
 });
