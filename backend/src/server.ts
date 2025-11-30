@@ -5,35 +5,9 @@ import { Client } from '@hubspot/api-client';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS configuration - only allow HubSpot domains
-const allowedOrigins = [
-  'https://app.hubspot.com',
-  'https://app-eu1.hubspot.com',
-  'https://app.hubspotqa.com',
-  /^https:\/\/.*\.hubspot\.com$/,
-  /^https:\/\/.*\.hubspotqa\.com$/
-];
-
+// CORS configuration - allow all origins for testing
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-
-    // Check if origin matches allowed patterns
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (typeof allowed === 'string') {
-        return origin === allowed;
-      }
-      return allowed.test(origin);
-    });
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.warn(`Blocked request from origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
