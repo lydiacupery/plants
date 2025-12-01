@@ -326,7 +326,7 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     description
   } = body;
 
-  console.log('[CREATE PLANT] Extracted contactId:', contactId, 'plantId:', plantId);
+  console.log('[CREATE PLANT] Extracted contactId:', contactId, 'type:', typeof contactId, 'plantId:', plantId);
 
   if (!contactId || !plantId) {
     console.log('[CREATE PLANT] Missing required fields in body:', JSON.stringify(body, null, 2));
@@ -344,6 +344,19 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     console.log(`[CREATE PLANT] Access token present: ${!!accessToken}, length: ${accessToken?.length}`);
 
     const hubspotClient = new Client({ accessToken });
+
+    // Verify the contact exists first
+    try {
+      const contact = await hubspotClient.crm.contacts.basicApi.getById(contactId.toString(), []);
+      console.log(`[CREATE PLANT] Contact verified, ID: ${contact.id}`);
+    } catch (error: any) {
+      console.error(`[CREATE PLANT] Contact ${contactId} not found or not accessible:`, error.message);
+      return res.status(400).json({
+        error: 'Contact not found or not accessible',
+        contactId: contactId,
+        details: error.message
+      });
+    }
 
     // Calculate next watering date
     const nextWateringDate = calculateNextWateringDate(wateringPeriod);
@@ -376,20 +389,32 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
 
     console.log(`[CREATE PLANT] Successfully created plant object with ID: ${plantObject.id}`);
 
-    // Associate the plant with the contact using v4 associations API
-    console.log(`[CREATE PLANT] Attempting to create association...`);
-    await hubspotClient.crm.associations.v4.basicApi.create(
-      'p_plants',
-      parseInt(plantObject.id),
-      'contacts',
-      parseInt(contactId.toString()),
-      [
+    // Associate the plant with the contact
+    // Use v3 associations with the default association label
+    console.log(`[CREATE PLANT] Attempting to create association between plant ${plantObject.id} and contact ${contactId}...`);
+
+    try {
+      await hubspotClient.crm.associations.batchApi.create(
+        'p_plants',
+        'contacts',
         {
-          associationCategory: 'HUBSPOT_DEFINED',
-          associationTypeId: 1 // Primary association
+          inputs: [
+            {
+              _from: { id: plantObject.id },
+              to: { id: contactId.toString() },
+              type: 'p_plants_to_contacts'
+            }
+          ]
         }
-      ]
-    );
+      );
+    } catch (assocError: any) {
+      console.error('[CREATE PLANT] Association error:', {
+        message: assocError.message,
+        body: assocError.body,
+        statusCode: assocError.statusCode
+      });
+      throw assocError;
+    }
 
     console.log(`[CREATE PLANT] Successfully associated plant ${plantObject.id} with contact ${contactId}`);
 
