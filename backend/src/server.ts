@@ -40,17 +40,8 @@ app.use(cors({
   maxAge: 86400 // 24 hours
 }));
 
-// Custom middleware to handle body parsing for HubSpot proxy
-app.use((req: Request, res: Response, next) => {
-  const contentType = req.get('content-type') || '';
-
-  if (contentType.includes('application/json')) {
-    express.json()(req, res, next);
-  } else {
-    // For unknown/missing content-type, parse as text
-    express.text({ type: '*/*' })(req, res, next);
-  }
-});
+// Use raw body parsing for all requests
+app.use(express.raw({ type: '*/*', limit: '10mb' }));
 
 // Type definitions for Perenual API responses
 interface PerenualPlant {
@@ -214,19 +205,28 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
   console.log('[CREATE PLANT] Query params:', req.query);
   console.log('[CREATE PLANT] Headers:', JSON.stringify(req.headers, null, 2));
   console.log('[CREATE PLANT] Body type:', typeof req.body);
-  console.log('[CREATE PLANT] Body:', JSON.stringify(req.body, null, 2));
+  console.log('[CREATE PLANT] Body is Buffer:', Buffer.isBuffer(req.body));
   console.log('[CREATE PLANT] Content-Type:', req.get('content-type'));
 
-  // Handle both parsed JSON and string bodies from HubSpot proxy
-  let body = req.body;
-  if (typeof body === 'string') {
-    try {
-      body = JSON.parse(body);
-      console.log('[CREATE PLANT] Parsed string body to JSON');
-    } catch (error) {
-      console.error('[CREATE PLANT] Failed to parse body as JSON:', error);
-      return res.status(400).json({ error: 'Invalid JSON in request body' });
+  // Parse raw buffer body
+  let body;
+  try {
+    if (Buffer.isBuffer(req.body)) {
+      const bodyString = req.body.toString('utf8');
+      console.log('[CREATE PLANT] Raw body string:', bodyString);
+      body = JSON.parse(bodyString);
+      console.log('[CREATE PLANT] Parsed buffer to JSON');
+    } else if (typeof req.body === 'string') {
+      console.log('[CREATE PLANT] Raw body string:', req.body);
+      body = JSON.parse(req.body);
+      console.log('[CREATE PLANT] Parsed string to JSON');
+    } else {
+      body = req.body;
+      console.log('[CREATE PLANT] Body already parsed');
     }
+  } catch (error) {
+    console.error('[CREATE PLANT] Failed to parse body as JSON:', error);
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
   }
 
   const {
