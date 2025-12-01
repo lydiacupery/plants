@@ -182,9 +182,6 @@ const PlantSearchCard: FC<ExtensionProps> = ({ actions, context }) => {
 
       const response = await hubspot.fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
         body: JSON.stringify({
           contactId,
           plantId: selectedPlant.id,
