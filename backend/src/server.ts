@@ -214,6 +214,14 @@ app.get('/api/plants/contact/:contactId', async (req: Request, res: Response) =>
 
     const hubspotClient = new Client({ accessToken });
 
+    // First, let's check the schema to see association definitions
+    try {
+      const schema = await hubspotClient.crm.schemas.coreApi.getById('p_plants');
+      console.log(`[GET PLANTS] Plant schema associations:`, JSON.stringify(schema.associations, null, 2));
+    } catch (e: any) {
+      console.log(`[GET PLANTS] Could not fetch schema:`, e.message);
+    }
+
     // Get associated plants using the associations API
     const associations = await hubspotClient.crm.objects.associationsApi.getAll(
       'contacts',
