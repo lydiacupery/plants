@@ -213,19 +213,36 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
   try {
     if (Buffer.isBuffer(req.body)) {
       const bodyString = req.body.toString('utf8');
-      console.log('[CREATE PLANT] Raw body string:', bodyString);
-      body = JSON.parse(bodyString);
-      console.log('[CREATE PLANT] Parsed buffer to JSON');
+      console.log('[CREATE PLANT] Raw body string length:', bodyString.length);
+      console.log('[CREATE PLANT] Raw body first 100 chars:', bodyString.substring(0, 100));
+
+      // Check if it's double-encoded
+      const parsed = JSON.parse(bodyString);
+      console.log('[CREATE PLANT] First parse type:', typeof parsed);
+
+      // If it's a string after first parse, parse again
+      if (typeof parsed === 'string') {
+        body = JSON.parse(parsed);
+        console.log('[CREATE PLANT] Double-parsed JSON (was double-encoded)');
+      } else {
+        body = parsed;
+        console.log('[CREATE PLANT] Parsed buffer to JSON');
+      }
     } else if (typeof req.body === 'string') {
-      console.log('[CREATE PLANT] Raw body string:', req.body);
-      body = JSON.parse(req.body);
-      console.log('[CREATE PLANT] Parsed string to JSON');
+      const parsed = JSON.parse(req.body);
+      if (typeof parsed === 'string') {
+        body = JSON.parse(parsed);
+        console.log('[CREATE PLANT] Double-parsed string JSON');
+      } else {
+        body = parsed;
+        console.log('[CREATE PLANT] Parsed string to JSON');
+      }
     } else {
       body = req.body;
       console.log('[CREATE PLANT] Body already parsed');
     }
-    console.log('[CREATE PLANT] Parsed body keys:', Object.keys(body));
-    console.log('[CREATE PLANT] Parsed body:', JSON.stringify(body, null, 2));
+    console.log('[CREATE PLANT] Final body type:', typeof body);
+    console.log('[CREATE PLANT] Final body keys:', Object.keys(body).slice(0, 10));
   } catch (error) {
     console.error('[CREATE PLANT] Failed to parse body as JSON:', error);
     return res.status(400).json({ error: 'Invalid JSON in request body' });
