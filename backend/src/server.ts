@@ -376,20 +376,19 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
 
     console.log(`[CREATE PLANT] Successfully created plant object with ID: ${plantObject.id}`);
 
-    // Associate the plant with the contact using batch API
+    // Associate the plant with the contact using v4 associations API
     console.log(`[CREATE PLANT] Attempting to create association...`);
-    await hubspotClient.crm.associations.batchApi.create(
-      'p_plants', // Use p_ prefix for custom objects
+    await hubspotClient.crm.associations.v4.basicApi.create(
+      'p_plants',
+      parseInt(plantObject.id),
       'contacts',
-      {
-        inputs: [
-          {
-            _from: { id: plantObject.id },
-            to: { id: contactId },
-            type: 'p_plants_to_contact'
-          }
-        ]
-      }
+      parseInt(contactId.toString()),
+      [
+        {
+          associationCategory: 'HUBSPOT_DEFINED',
+          associationTypeId: 1 // Primary association
+        }
+      ]
     );
 
     console.log(`[CREATE PLANT] Successfully associated plant ${plantObject.id} with contact ${contactId}`);
