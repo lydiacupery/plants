@@ -199,6 +199,70 @@ app.get('/api/plants/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Get plants associated with a contact
+app.get('/api/plants/contact/:contactId', async (req: Request, res: Response) => {
+  const { contactId } = req.params;
+
+  const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    return res.status(500).json({ error: 'HubSpot access token not configured' });
+  }
+
+  try {
+    console.log(`[GET PLANTS] Fetching plants for contact: ${contactId}`);
+
+    const hubspotClient = new Client({ accessToken });
+
+    // Get associated plants using the associations API
+    const associations = await hubspotClient.crm.objects.associationsApi.getAll(
+      'contacts',
+      contactId,
+      'p_plants'
+    );
+
+    console.log(`[GET PLANTS] Found ${associations.results.length} associated plants`);
+
+    // Fetch details for each plant
+    const plantPromises = associations.results.map(async (assoc: any) => {
+      const plant = await hubspotClient.crm.objects.basicApi.getById(
+        'p_plants',
+        assoc.toObjectId || assoc.id,
+        ['plant_name', 'scientific_name', 'watering_frequency', 'watering_period',
+         'sunlight_requirement', 'care_level', 'image_url', 'next_watering_date']
+      );
+      return plant;
+    });
+
+    const plants = await Promise.all(plantPromises);
+
+    res.json({
+      plants: plants.map(plant => ({
+        id: plant.id,
+        plantName: plant.properties.plant_name,
+        scientificName: plant.properties.scientific_name,
+        wateringFrequency: plant.properties.watering_frequency,
+        wateringPeriod: plant.properties.watering_period,
+        sunlightRequirement: plant.properties.sunlight_requirement,
+        careLevel: plant.properties.care_level,
+        imageUrl: plant.properties.image_url,
+        nextWateringDate: plant.properties.next_watering_date
+      }))
+    });
+  } catch (error: any) {
+    console.error('[GET PLANTS] Error occurred:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      body: error.body
+    });
+
+    res.status(500).json({
+      error: 'Failed to fetch associated plants',
+      details: error.message
+    });
+  }
+});
+
 // Create plant and associate with contact endpoint
 app.post('/api/plants/associate', async (req: Request, res: Response) => {
   console.log('[CREATE PLANT] Request received');
