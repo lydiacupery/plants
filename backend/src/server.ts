@@ -5,9 +5,35 @@ import { Client } from '@hubspot/api-client';
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
-// CORS configuration - allow all origins for testing
+// CORS configuration - only allow HubSpot domains
+const allowedOrigins = [
+  'https://app.hubspot.com',
+  'https://app-eu1.hubspot.com',
+  'https://app.hubspotqa.com',
+  /^https:\/\/.*\.hubspot\.com$/,
+  /^https:\/\/.*\.hubspotqa\.com$/
+];
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+
+    // Check if origin matches allowed patterns
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return origin === allowed;
+      }
+      return allowed.test(origin);
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -198,7 +224,8 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
   }
 
   try {
-    console.log(`Creating plant ${commonName} for contact ${contactId}`);
+    console.log(`[CREATE PLANT] Starting for contact ${contactId}, plant: ${commonName}`);
+    console.log(`[CREATE PLANT] Access token present: ${!!accessToken}, length: ${accessToken?.length}`);
 
     const hubspotClient = new Client({ accessToken });
 
@@ -219,7 +246,10 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       next_watering_date: nextWateringDate
     };
 
+    console.log(`[CREATE PLANT] Plant properties:`, plantProperties);
+
     // Create the plant custom object
+    console.log(`[CREATE PLANT] Attempting to create plant object...`);
     const plantObject = await hubspotClient.crm.objects.basicApi.create(
       'plants',
       {
@@ -228,9 +258,10 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       }
     );
 
-    console.log(`Created plant object with ID: ${plantObject.id}`);
+    console.log(`[CREATE PLANT] Successfully created plant object with ID: ${plantObject.id}`);
 
     // Associate the plant with the contact using batch API
+    console.log(`[CREATE PLANT] Attempting to create association...`);
     await hubspotClient.crm.associations.batchApi.create(
       'plants',
       'contacts',
@@ -245,7 +276,7 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       }
     );
 
-    console.log(`Associated plant ${plantObject.id} with contact ${contactId}`);
+    console.log(`[CREATE PLANT] Successfully associated plant ${plantObject.id} with contact ${contactId}`);
 
     res.json({
       success: true,
@@ -253,17 +284,25 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       message: 'Plant successfully created and associated with contact'
     });
   } catch (error: any) {
-    console.error('Error creating plant:', error);
+    console.error('[CREATE PLANT] Error occurred:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      body: error.body,
+      category: error.body?.category,
+      fullError: JSON.stringify(error, null, 2)
+    });
 
-    if (error.message?.includes('does not exist')) {
+    if (error.body?.category === 'OBJECT_NOT_FOUND' || error.message?.includes('does not exist')) {
       return res.status(400).json({
-        error: 'Plant custom object schema not found. Please create it in HubSpot first.'
+        error: 'Plant custom object schema not found. Please create it in HubSpot first.',
+        details: error.body
       });
     }
 
     res.status(500).json({
       error: 'Failed to create plant',
-      details: error.message
+      details: error.message,
+      hubspotError: error.body
     });
   }
 });
