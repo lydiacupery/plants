@@ -40,10 +40,17 @@ app.use(cors({
   maxAge: 86400 // 24 hours
 }));
 
-// Parse JSON bodies
-app.use(express.json());
-// Also parse text bodies for HubSpot proxy compatibility
-app.use(express.text({ type: '*/*' }));
+// Custom middleware to handle body parsing for HubSpot proxy
+app.use((req: Request, res: Response, next) => {
+  const contentType = req.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    express.json()(req, res, next);
+  } else {
+    // For unknown/missing content-type, parse as text
+    express.text({ type: '*/*' })(req, res, next);
+  }
+});
 
 // Type definitions for Perenual API responses
 interface PerenualPlant {
