@@ -40,9 +40,10 @@ app.use(cors({
   maxAge: 86400 // 24 hours
 }));
 
-// Parse JSON bodies - be lenient with content-type
+// Parse JSON bodies
 app.use(express.json());
-app.use(express.json({ type: '*/*' })); // Parse any content-type as JSON for HubSpot proxy compatibility
+// Also parse text bodies for HubSpot proxy compatibility
+app.use(express.text({ type: '*/*' }));
 
 // Type definitions for Perenual API responses
 interface PerenualPlant {
@@ -205,8 +206,21 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
   console.log('[CREATE PLANT] Request received');
   console.log('[CREATE PLANT] Query params:', req.query);
   console.log('[CREATE PLANT] Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('[CREATE PLANT] Body type:', typeof req.body);
   console.log('[CREATE PLANT] Body:', JSON.stringify(req.body, null, 2));
   console.log('[CREATE PLANT] Content-Type:', req.get('content-type'));
+
+  // Handle both parsed JSON and string bodies from HubSpot proxy
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+      console.log('[CREATE PLANT] Parsed string body to JSON');
+    } catch (error) {
+      console.error('[CREATE PLANT] Failed to parse body as JSON:', error);
+      return res.status(400).json({ error: 'Invalid JSON in request body' });
+    }
+  }
 
   const {
     contactId,
@@ -219,7 +233,7 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     careLevel,
     imageUrl,
     description
-  } = req.body;
+  } = body;
 
   if (!contactId || !plantId) {
     console.log('[CREATE PLANT] Missing required fields - contactId:', contactId, 'plantId:', plantId);
