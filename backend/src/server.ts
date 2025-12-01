@@ -224,6 +224,8 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       body = req.body;
       console.log('[CREATE PLANT] Body already parsed');
     }
+    console.log('[CREATE PLANT] Parsed body keys:', Object.keys(body));
+    console.log('[CREATE PLANT] Parsed body:', JSON.stringify(body, null, 2));
   } catch (error) {
     console.error('[CREATE PLANT] Failed to parse body as JSON:', error);
     return res.status(400).json({ error: 'Invalid JSON in request body' });
@@ -242,8 +244,10 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     description
   } = body;
 
+  console.log('[CREATE PLANT] Extracted contactId:', contactId, 'plantId:', plantId);
+
   if (!contactId || !plantId) {
-    console.log('[CREATE PLANT] Missing required fields - contactId:', contactId, 'plantId:', plantId);
+    console.log('[CREATE PLANT] Missing required fields in body:', JSON.stringify(body, null, 2));
     return res.status(400).json({ error: 'contactId and plantId are required' });
   }
 
