@@ -410,7 +410,7 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
             {
               _from: { id: plantObject.id },
               to: { id: contactId.toString() },
-              type: 'p_plants_to_contacts'
+              type: 'contact_to_plants' // Use the association name from schema
             }
           ]
         }
