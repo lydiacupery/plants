@@ -221,6 +221,7 @@ app.get('/api/plants/contact/:contactId', async (req: Request, res: Response) =>
       'p_plants'
     );
 
+    console.log(`[GET PLANTS] Association response:`, JSON.stringify(associations, null, 2));
     console.log(`[GET PLANTS] Found ${associations.results.length} associated plants`);
 
     // Fetch details for each plant
