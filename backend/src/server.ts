@@ -199,6 +199,56 @@ app.get('/api/plants/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Remove plant association from contact
+app.delete('/api/plants/contact/:contactId/plant/:plantId', async (req: Request, res: Response) => {
+  const { contactId, plantId } = req.params;
+
+  const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    return res.status(500).json({ error: 'HubSpot access token not configured' });
+  }
+
+  try {
+    console.log(`[REMOVE PLANT] Removing plant ${plantId} from contact ${contactId}`);
+
+    const hubspotClient = new Client({ accessToken });
+
+    // Remove the association
+    await hubspotClient.crm.associations.batchApi.archive(
+      'p_plants',
+      'contacts',
+      {
+        inputs: [
+          {
+            _from: { id: plantId },
+            to: { id: contactId },
+            type: 'contact_to_plants'
+          }
+        ]
+      }
+    );
+
+    console.log(`[REMOVE PLANT] Successfully removed association`);
+
+    res.json({
+      success: true,
+      message: 'Plant association removed successfully'
+    });
+  } catch (error: any) {
+    console.error('[REMOVE PLANT] Error occurred:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      body: error.body
+    });
+
+    res.status(500).json({
+      error: 'Failed to remove plant association',
+      details: error.message
+    });
+  }
+});
+
 // Get plants associated with a contact
 app.get('/api/plants/contact/:contactId', async (req: Request, res: Response) => {
   const { contactId } = req.params;
@@ -238,7 +288,7 @@ app.get('/api/plants/contact/:contactId', async (req: Request, res: Response) =>
         'p_plants',
         assoc.toObjectId || assoc.id,
         ['plant_name', 'scientific_name', 'watering_frequency', 'watering_period',
-         'sunlight_requirement', 'care_level', 'image_url', 'next_watering_date']
+         'sunlight_requirement', 'care_level', 'image_url', 'perenual_plant_id']
       );
       return plant;
     });
@@ -255,7 +305,7 @@ app.get('/api/plants/contact/:contactId', async (req: Request, res: Response) =>
         sunlightRequirement: plant.properties.sunlight_requirement,
         careLevel: plant.properties.care_level,
         imageUrl: plant.properties.image_url,
-        nextWateringDate: plant.properties.next_watering_date
+        perenualPlantId: plant.properties.perenual_plant_id // Include Perenual ID for checking duplicates
       }))
     });
   } catch (error: any) {
@@ -366,9 +416,6 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       });
     }
 
-    // Calculate next watering date
-    const nextWateringDate = calculateNextWateringDate(wateringPeriod);
-
     // Create custom object for plant
     const plantProperties = {
       plant_name: commonName,
@@ -379,8 +426,7 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       care_level: careLevel || 'Unknown',
       perenual_plant_id: plantId.toString(),
       image_url: imageUrl || '',
-      description: description || '',
-      next_watering_date: nextWateringDate
+      description: description || ''
     };
 
     console.log(`[CREATE PLANT] Plant properties:`, plantProperties);
@@ -454,29 +500,6 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     });
   }
 });
-
-// Helper function to calculate next watering date
-function calculateNextWateringDate(wateringPeriod?: string): string {
-  const now = new Date();
-
-  // Map watering periods to days
-  const periodToDays: Record<string, number> = {
-    daily: 1,
-    frequent: 1,
-    average: 7,
-    minimum: 14,
-    none: 30
-  };
-
-  const days = periodToDays[wateringPeriod?.toLowerCase() || ''] || 7;
-
-  // Add days to current date
-  const nextDate = new Date(now);
-  nextDate.setDate(nextDate.getDate() + days);
-
-  // Return in ISO format (YYYY-MM-DD)
-  return nextDate.toISOString().split('T')[0];
-}
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Plant Care API listening on port ${PORT}`);
