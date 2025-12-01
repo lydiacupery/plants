@@ -251,7 +251,7 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     // Create the plant custom object
     console.log(`[CREATE PLANT] Attempting to create plant object...`);
     const plantObject = await hubspotClient.crm.objects.basicApi.create(
-      'plants',
+      'p_plants', // Use p_ prefix for custom objects
       {
         properties: plantProperties,
         associations: []
@@ -263,14 +263,14 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     // Associate the plant with the contact using batch API
     console.log(`[CREATE PLANT] Attempting to create association...`);
     await hubspotClient.crm.associations.batchApi.create(
-      'plants',
+      'p_plants', // Use p_ prefix for custom objects
       'contacts',
       {
         inputs: [
           {
             _from: { id: plantObject.id },
             to: { id: contactId },
-            type: 'plants_to_contact'
+            type: 'p_plants_to_contact'
           }
         ]
       }
