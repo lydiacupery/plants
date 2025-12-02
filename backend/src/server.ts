@@ -101,7 +101,7 @@ app.get('/', (req: Request, res: Response) => {
 
 // Search plants endpoint
 app.get('/api/plants/search', async (req: Request, res: Response) => {
-  const { q } = req.query;
+  const { q, indoor } = req.query;
 
   if (!q || typeof q !== 'string') {
     return res.status(400).json({ error: 'Query parameter "q" is required' });
@@ -114,11 +114,15 @@ app.get('/api/plants/search', async (req: Request, res: Response) => {
   }
 
   try {
-    console.log(`Searching for plants: ${q}`);
+    console.log(`Searching for plants: ${q}, indoor: ${indoor}`);
 
-    const response = await fetch(
-      `https://perenual.com/api/v2/species-list?key=${apiKey}&q=${encodeURIComponent(q)}`
-    );
+    // Build URL with indoor filter if specified
+    let url = `https://perenual.com/api/v2/species-list?key=${apiKey}&q=${encodeURIComponent(q)}`;
+    if (indoor === '1') {
+      url += '&indoor=1';
+    }
+
+    const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
