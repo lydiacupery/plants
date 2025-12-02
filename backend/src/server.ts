@@ -420,36 +420,13 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       });
     }
 
-    // Fetch fresh details from Perenual API
-    const perenualApiKey = process.env.PERENUAL_API_KEY;
-    let freshWatering = watering;
-    let freshWateringPeriod = wateringPeriod;
-
-    if (perenualApiKey && plantId) {
-      try {
-        console.log(`[CREATE PLANT] Fetching fresh details from Perenual for plant ${plantId}`);
-        const perenualResponse = await fetch(
-          `https://perenual.com/api/v2/species/details/${plantId}?key=${perenualApiKey}`
-        );
-        if (perenualResponse.ok) {
-          const perenualData: any = await perenualResponse.json();
-          freshWatering = perenualData.watering || watering;
-          freshWateringPeriod = perenualData.watering_period || wateringPeriod;
-          console.log(`[CREATE PLANT] Fresh watering data: ${freshWatering}, period: ${freshWateringPeriod}`);
-        } else {
-          console.warn(`[CREATE PLANT] Perenual API returned ${perenualResponse.status}, using provided data`);
-        }
-      } catch (error) {
-        console.error(`[CREATE PLANT] Failed to fetch Perenual details:`, error);
-      }
-    }
-
-    // Create custom object for plant with fresh data
+    // Create custom object for plant
+    // Note: watering data comes from the plant details page which fetches fresh data from Perenual
     const plantProperties = {
       plant_name: commonName,
       scientific_name: scientificName || '',
-      watering_frequency: freshWatering || 'Unknown',
-      watering_period: freshWateringPeriod || 'Unknown',
+      watering_frequency: watering || 'Unknown',
+      watering_period: wateringPeriod || 'Unknown',
       sunlight_requirement: Array.isArray(sunlight) ? sunlight.join(', ') : sunlight || 'Unknown',
       care_level: careLevel || 'Unknown',
       perenual_plant_id: plantId.toString(),
