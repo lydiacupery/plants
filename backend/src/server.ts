@@ -429,7 +429,7 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       try {
         console.log(`[CREATE PLANT] Fetching fresh details from Perenual for plant ${plantId}`);
         const perenualResponse = await fetch(
-          `https://perenual.com/api/species/details/${plantId}?key=${perenualApiKey}`
+          `https://perenual.com/api/v2/species/details/${plantId}?key=${perenualApiKey}`
         );
         if (perenualResponse.ok) {
           const perenualData: any = await perenualResponse.json();
