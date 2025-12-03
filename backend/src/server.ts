@@ -660,9 +660,32 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
   }
 
   try {
-    console.log(`[WATER PLANT WORKFLOW] Watering plant ${plantId} for contact ${contactId}`);
-
     const hubspotClient = new Client({ accessToken });
+
+    // If contactId is not provided, try to get it from associations
+    if (!contactId || contactId === '') {
+      console.log(`[WATER PLANT WORKFLOW] No contactId provided, looking up associated contact for plant ${plantId}`);
+
+      try {
+        const associations = await hubspotClient.crm.objects.associationsApi.getAll(
+          'p_plants',
+          plantId,
+          'contacts'
+        );
+
+        if (associations.results && associations.results.length > 0) {
+          contactId = (associations.results[0] as any).toObjectId || associations.results[0].id;
+          console.log(`[WATER PLANT WORKFLOW] Found associated contact: ${contactId}`);
+        } else {
+          console.log(`[WATER PLANT WORKFLOW] No associated contact found for plant ${plantId}`);
+        }
+      } catch (assocError: any) {
+        console.log(`[WATER PLANT WORKFLOW] Could not fetch associations:`, assocError.message);
+        // Continue without contactId - it's not critical for watering the plant
+      }
+    }
+
+    console.log(`[WATER PLANT WORKFLOW] Watering plant ${plantId}${contactId ? ` for contact ${contactId}` : ''}`);
 
     // Get the plant's current watering_days value
     const plant = await hubspotClient.crm.objects.basicApi.getById(
