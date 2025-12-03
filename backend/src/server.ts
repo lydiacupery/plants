@@ -727,11 +727,50 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
 
     console.log(`[WATER PLANT WORKFLOW] Successfully updated plant ${plantId}`);
 
+    // Send notification to associated contact if found
+    let notificationSent = false;
+    if (contactId) {
+      try {
+        console.log(`[WATER PLANT WORKFLOW] Sending notification to contact ${contactId}`);
+
+        // Create an engagement (note) on the contact's timeline
+        await hubspotClient.crm.objects.notes.basicApi.create({
+          properties: {
+            hs_timestamp: new Date().getTime().toString(),
+            hs_note_body: `🌱 Your plant "${plant.properties.plant_name}" has been watered! Next watering scheduled for ${nextWateringDateString}.`
+          },
+          associations: [
+            {
+              to: { id: contactId },
+              types: [
+                {
+                  associationCategory: 'HUBSPOT_DEFINED',
+                  associationTypeId: 202 // Note to Contact association
+                }
+              ]
+            }
+          ]
+        });
+
+        console.log(`[WATER PLANT WORKFLOW] Notification sent to contact ${contactId}`);
+        notificationSent = true;
+      } catch (notificationError: any) {
+        console.error(`[WATER PLANT WORKFLOW] Failed to send notification:`, {
+          message: notificationError.message,
+          statusCode: notificationError.statusCode,
+          body: notificationError.body
+        });
+        // Don't fail the whole workflow if notification fails
+      }
+    }
+
     // Return success response to HubSpot
     res.json({
       outputFields: {
         success: true,
-        nextWateringDate: nextWateringDateString
+        nextWateringDate: nextWateringDateString,
+        notificationSent: notificationSent,
+        contactId: contactId || 'none'
       }
     });
   } catch (error: any) {
