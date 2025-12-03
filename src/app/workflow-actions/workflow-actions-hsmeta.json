@@ -18,15 +18,6 @@
         },
         "supportedValueTypes": ["OBJECT_PROPERTY"],
         "isRequired": true
-      },
-      {
-        "typeDefinition": {
-          "name": "contactId",
-          "type": "string",
-          "fieldType": "text"
-        },
-        "supportedValueTypes": ["OBJECT_PROPERTY"],
-        "isRequired": false
       }
     ],
     "labels": {
@@ -35,12 +26,10 @@
         "actionDescription": "Updates a plant's watering date and calculates the next watering date",
         "actionCardContent": "Water plant and update next watering date",
         "inputFieldLabels": {
-          "plantId": "Plant ID",
-          "contactId": "Contact ID"
+          "plantId": "Plant ID"
         },
         "inputFieldDescriptions": {
-          "plantId": "The ID of the plant to water",
-          "contactId": "The ID of the contact who owns the plant"
+          "plantId": "The ID of the plant to water"
         }
       }
     },

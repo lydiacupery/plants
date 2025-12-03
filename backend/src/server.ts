@@ -710,13 +710,12 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
 
     console.log(`[WATER PLANT WORKFLOW] Today: ${todayString}, Next watering: ${nextWateringDateString}`);
 
-    // Update plant with last watered date and next watering date
+    // Update plant with next watering date
     await hubspotClient.crm.objects.basicApi.update(
       'p_plants',
       plantId,
       {
         properties: {
-          last_watered_date: todayString,
           next_watering_date: nextWateringDateString
         }
       }
@@ -728,7 +727,6 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
     res.json({
       outputFields: {
         success: true,
-        lastWateredDate: todayString,
         nextWateringDate: nextWateringDateString
       }
     });
