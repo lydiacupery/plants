@@ -609,18 +609,49 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
   }
 
   // Extract data from HubSpot workflow action payload
-  const { inputFields } = body;
+  // HubSpot can send data in different formats, so check multiple possible structures
+  const { inputFields, fields, object } = body;
 
-  if (!inputFields) {
-    return res.status(400).json({ error: 'Missing inputFields in request' });
+  console.log('[WATER PLANT WORKFLOW] Body structure:', {
+    hasInputFields: !!inputFields,
+    hasFields: !!fields,
+    hasObject: !!object,
+    bodyKeys: Object.keys(body)
+  });
+
+  // Try to extract plantId and contactId from various possible locations
+  let plantId, contactId;
+
+  if (inputFields) {
+    plantId = inputFields.plantId;
+    contactId = inputFields.contactId;
+  } else if (fields) {
+    plantId = fields.plantId;
+    contactId = fields.contactId;
+  } else if (body.plantId) {
+    // Direct fields in body
+    plantId = body.plantId;
+    contactId = body.contactId;
+  } else if (object) {
+    // Sometimes the object itself contains the IDs
+    plantId = object.objectId;
+    contactId = object.objectId;
   }
 
-  const { plantId, contactId } = inputFields;
+  console.log('[WATER PLANT WORKFLOW] Extracted values:', { plantId, contactId });
 
-  if (!plantId || !contactId) {
-    console.log('[WATER PLANT WORKFLOW] Missing required fields:', { plantId, contactId });
-    return res.status(400).json({ error: 'plantId and contactId are required' });
+  if (!plantId) {
+    console.log('[WATER PLANT WORKFLOW] Missing plantId. Full body:', JSON.stringify(body, null, 2));
+    return res.status(400).json({
+      error: 'plantId is required',
+      receivedBody: body,
+      debug: 'Check logs for full payload structure'
+    });
   }
+
+  // If contactId is empty, we can still proceed - it's optional for this workflow
+  // The workflow is running on the plant object, so we have the plantId
+  console.log('[WATER PLANT WORKFLOW] Will proceed with plantId:', plantId);
 
   const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
 
