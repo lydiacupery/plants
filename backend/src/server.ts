@@ -34,8 +34,8 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-HubSpot-Signature'],
   credentials: true,
   maxAge: 86400 // 24 hours
 }));
@@ -200,6 +200,74 @@ app.get('/api/plants/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Details error:', error);
     res.status(500).json({ error: 'Failed to fetch plant details' });
+  }
+});
+
+// Update plant watering information
+app.patch('/api/plants/contact/:contactId/plant/:plantId', async (req: Request, res: Response) => {
+  const { contactId, plantId } = req.params;
+
+  // Parse raw buffer body
+  let body;
+  try {
+    if (Buffer.isBuffer(req.body)) {
+      const bodyString = req.body.toString('utf8');
+      const parsed = JSON.parse(bodyString);
+      body = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+    } else if (typeof req.body === 'string') {
+      const parsed = JSON.parse(req.body);
+      body = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+    } else {
+      body = req.body;
+    }
+  } catch (error) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+
+  const { wateringPeriod, wateringDays } = body;
+
+  const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    return res.status(500).json({ error: 'HubSpot access token not configured' });
+  }
+
+  try {
+    console.log(`[UPDATE PLANT] Updating plant ${plantId} for contact ${contactId}`);
+
+    const hubspotClient = new Client({ accessToken });
+
+    const updateProperties: any = {};
+    if (wateringPeriod) {
+      updateProperties.watering_period = wateringPeriod;
+    }
+    if (wateringDays !== undefined) {
+      updateProperties.watering_days = wateringDays.toString();
+    }
+
+    await hubspotClient.crm.objects.basicApi.update(
+      'p_plants',
+      plantId,
+      { properties: updateProperties }
+    );
+
+    console.log(`[UPDATE PLANT] Successfully updated plant ${plantId}`);
+
+    res.json({
+      success: true,
+      message: 'Plant watering information updated successfully'
+    });
+  } catch (error: any) {
+    console.error('[UPDATE PLANT] Error occurred:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      body: error.body
+    });
+
+    res.status(500).json({
+      error: 'Failed to update plant',
+      details: error.message
+    });
   }
 });
 
@@ -382,6 +450,8 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
     scientificName,
     watering,
     wateringPeriod,
+    wateringDays,
+    nextWateringDate,
     sunlight,
     careLevel,
     imageUrl,
@@ -422,17 +492,24 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
 
     // Create custom object for plant
     // Note: watering data comes from the plant details page which fetches fresh data from Perenual
-    const plantProperties = {
+    const plantProperties: any = {
       plant_name: commonName,
       scientific_name: scientificName || '',
       watering_frequency: watering || 'Unknown',
-      watering_period: wateringPeriod || 'Unknown',
       sunlight_requirement: Array.isArray(sunlight) ? sunlight.join(', ') : sunlight || 'Unknown',
       care_level: careLevel || 'Unknown',
       perenual_plant_id: plantId.toString(),
       image_url: imageUrl || '',
       description: description || ''
     };
+
+    // Add optional fields if provided
+    if (wateringDays !== undefined) {
+      plantProperties.watering_days = wateringDays.toString();
+    }
+    if (nextWateringDate) {
+      plantProperties.next_watering_date = nextWateringDate;
+    }
 
     console.log(`[CREATE PLANT] Plant properties:`, plantProperties);
 
@@ -502,6 +579,115 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
       error: 'Failed to create plant',
       details: error.message,
       hubspotError: error.body
+    });
+  }
+});
+
+// Workflow action: Water plant endpoint
+app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
+  console.log('[WATER PLANT WORKFLOW] Request received');
+  console.log('[WATER PLANT WORKFLOW] Headers:', JSON.stringify(req.headers, null, 2));
+
+  // Parse raw buffer body
+  let body;
+  try {
+    if (Buffer.isBuffer(req.body)) {
+      const bodyString = req.body.toString('utf8');
+      console.log('[WATER PLANT WORKFLOW] Raw body:', bodyString);
+      const parsed = JSON.parse(bodyString);
+      body = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+    } else if (typeof req.body === 'string') {
+      const parsed = JSON.parse(req.body);
+      body = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+    } else {
+      body = req.body;
+    }
+    console.log('[WATER PLANT WORKFLOW] Parsed body:', JSON.stringify(body, null, 2));
+  } catch (error) {
+    console.error('[WATER PLANT WORKFLOW] Failed to parse body:', error);
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+
+  // Extract data from HubSpot workflow action payload
+  const { inputFields } = body;
+
+  if (!inputFields) {
+    return res.status(400).json({ error: 'Missing inputFields in request' });
+  }
+
+  const { plantId, contactId } = inputFields;
+
+  if (!plantId || !contactId) {
+    console.log('[WATER PLANT WORKFLOW] Missing required fields:', { plantId, contactId });
+    return res.status(400).json({ error: 'plantId and contactId are required' });
+  }
+
+  const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    return res.status(500).json({ error: 'HubSpot access token not configured' });
+  }
+
+  try {
+    console.log(`[WATER PLANT WORKFLOW] Watering plant ${plantId} for contact ${contactId}`);
+
+    const hubspotClient = new Client({ accessToken });
+
+    // Get the plant's current watering_days value
+    const plant = await hubspotClient.crm.objects.basicApi.getById(
+      'p_plants',
+      plantId,
+      ['watering_days', 'plant_name', 'next_watering_date']
+    );
+
+    const wateringDays = plant.properties.watering_days
+      ? parseInt(plant.properties.watering_days, 10)
+      : 7; // Default to 7 days if not set
+
+    console.log(`[WATER PLANT WORKFLOW] Plant: ${plant.properties.plant_name}, watering every ${wateringDays} days`);
+
+    // Calculate next watering date
+    const today = new Date();
+    const nextWateringDate = new Date(today);
+    nextWateringDate.setDate(today.getDate() + wateringDays);
+
+    const todayString = today.toISOString().split('T')[0];
+    const nextWateringDateString = nextWateringDate.toISOString().split('T')[0];
+
+    console.log(`[WATER PLANT WORKFLOW] Today: ${todayString}, Next watering: ${nextWateringDateString}`);
+
+    // Update plant with last watered date and next watering date
+    await hubspotClient.crm.objects.basicApi.update(
+      'p_plants',
+      plantId,
+      {
+        properties: {
+          last_watered_date: todayString,
+          next_watering_date: nextWateringDateString
+        }
+      }
+    );
+
+    console.log(`[WATER PLANT WORKFLOW] Successfully updated plant ${plantId}`);
+
+    // Return success response to HubSpot
+    res.json({
+      outputFields: {
+        success: true,
+        lastWateredDate: todayString,
+        nextWateringDate: nextWateringDateString
+      }
+    });
+  } catch (error: any) {
+    console.error('[WATER PLANT WORKFLOW] Error occurred:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      body: error.body
+    });
+
+    res.status(500).json({
+      error: 'Failed to water plant',
+      details: error.message
     });
   }
 });

@@ -1,8 +1,8 @@
 {
-  "uid": "simple_notification_action",
+  "uid": "water_plant_action",
   "type": "workflow-action",
   "config": {
-    "actionUrl": "https://example.com",
+    "actionUrl": "https://plants-production-a263.up.railway.app/api/workflow/water-plant",
     "isPublished": false,
     "supportedClients": [
       {
@@ -12,52 +12,38 @@
     "inputFields": [
       {
         "typeDefinition": {
-          "name": "message",
+          "name": "plantId",
           "type": "string",
-          "fieldType": "textarea"
+          "fieldType": "text"
         },
-        "supportedValueTypes": ["STATIC_VALUE"],
+        "supportedValueTypes": ["OBJECT_PROPERTY"],
         "isRequired": true
       },
       {
         "typeDefinition": {
-          "name": "priority",
-          "type": "enumeration",
-          "fieldType": "select",
-          "options": [
-            {
-              "value": "high",
-              "label": "High Priority"
-            },
-            {
-              "value": "normal",
-              "label": "Normal Priority"
-            },
-            {
-              "value": "low",
-              "label": "Low Priority"
-            }
-          ]
+          "name": "contactId",
+          "type": "string",
+          "fieldType": "text"
         },
-        "supportedValueTypes": ["STATIC_VALUE"],
+        "supportedValueTypes": ["OBJECT_PROPERTY"],
         "isRequired": true
       }
     ],
     "labels": {
       "en": {
-        "actionName": "My Custom Action (via Projects V2)",
-        "actionDescription": "Sends a notification with custom message and priority level",
-        "actionCardContent": "Send {{priority}} priority notification",
+        "actionName": "Water Plant",
+        "actionDescription": "Updates a plant's watering date and calculates the next watering date",
+        "actionCardContent": "Water plant and update next watering date",
         "inputFieldLabels": {
-          "message": "Notification Message",
-          "priority": "Priority Level"
+          "plantId": "Plant ID",
+          "contactId": "Contact ID"
         },
         "inputFieldDescriptions": {
-          "message": "Enter the message to be sent in the notification",
-          "priority": "Select the priority level for this notification"
+          "plantId": "The ID of the plant to water",
+          "contactId": "The ID of the contact who owns the plant"
         }
       }
     },
-    "objectTypes": ["CONTACT"]
+    "objectTypes": ["CONTACT", "2-36660403"]
   }
 }

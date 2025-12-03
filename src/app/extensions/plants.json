@@ -58,11 +58,11 @@
       ]
     },
     {
-      "name": "watering_period",
-      "label": "Watering Period",
-      "type": "string",
-      "fieldType": "text",
-      "description": "Specific watering period from Perenual"
+      "name": "watering_days",
+      "label": "Watering Days",
+      "type": "number",
+      "fieldType": "number",
+      "description": "Number of days between waterings"
     },
     {
       "name": "sunlight_requirement",
