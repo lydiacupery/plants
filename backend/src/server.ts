@@ -694,9 +694,13 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
       ['watering_days', 'plant_name', 'next_watering_date']
     );
 
-    const wateringDays = plant.properties.watering_days
+    const wateringDaysValue = plant.properties.watering_days
       ? parseInt(plant.properties.watering_days, 10)
-      : 7; // Default to 7 days if not set
+      : NaN;
+
+    const wateringDays = wateringDaysValue && wateringDaysValue > 0
+      ? wateringDaysValue
+      : 7; // Default to 7 days if not set or invalid
 
     console.log(`[WATER PLANT WORKFLOW] Plant: ${plant.properties.plant_name}, watering every ${wateringDays} days`);
 
