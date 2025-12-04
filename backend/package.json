@@ -4,10 +4,12 @@
   "description": "Backend proxy for Perenual API",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run migrate:safe",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "migrate": "node scripts/migrate.js",
+    "migrate:safe": "node scripts/migrate.js || true"
   },
   "dependencies": {
     "express": "^4.18.2",
