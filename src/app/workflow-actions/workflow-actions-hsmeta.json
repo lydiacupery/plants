@@ -1,5 +1,5 @@
 {
-  "uid": "water_plant_action",
+  "uid": "water_plant_action_oauth",
   "type": "workflow-action",
   "config": {
     "actionUrl": "https://plants-production-a263.up.railway.app/api/workflow/water-plant",
