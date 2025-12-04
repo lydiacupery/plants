@@ -94,9 +94,153 @@ interface PlantDetailsResponse {
   propagation: string[];
 }
 
+// OAuth imports
+import { exchangeCodeForTokens } from './oauth';
+import { deleteTokens } from './tokenStore';
+
 // Health check endpoint
 app.get('/', (req: Request, res: Response) => {
   res.json({ status: 'Plant Care API is running' });
+});
+
+// OAuth callback endpoint
+app.get('/oauth/callback', async (req: Request, res: Response) => {
+  const { code } = req.query;
+
+  if (!code || typeof code !== 'string') {
+    return res.status(400).send('Missing authorization code');
+  }
+
+  try {
+    console.log('[OAUTH CALLBACK] Received authorization code');
+
+    const tokenData = await exchangeCodeForTokens(code);
+
+    console.log(`[OAUTH CALLBACK] Successfully authorized portal ${tokenData.portalId}`);
+
+    // Redirect to success page or HubSpot
+    res.send(`
+      <html>
+        <head>
+          <title>Authorization Successful</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .container {
+              background: white;
+              padding: 40px;
+              border-radius: 10px;
+              box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+              text-align: center;
+              max-width: 400px;
+            }
+            h1 {
+              color: #2e7d32;
+              margin-bottom: 20px;
+            }
+            p {
+              color: #666;
+              margin-bottom: 30px;
+            }
+            .success-icon {
+              font-size: 60px;
+              margin-bottom: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="success-icon">✅</div>
+            <h1>Authorization Successful!</h1>
+            <p>Your Plant Care Assistant app has been successfully connected to your HubSpot account.</p>
+            <p>You can close this window and return to HubSpot.</p>
+          </div>
+        </body>
+      </html>
+    `);
+  } catch (error: any) {
+    console.error('[OAUTH CALLBACK] Error:', error);
+    res.status(500).send(`
+      <html>
+        <head>
+          <title>Authorization Failed</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            }
+            .container {
+              background: white;
+              padding: 40px;
+              border-radius: 10px;
+              box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+              text-align: center;
+              max-width: 400px;
+            }
+            h1 {
+              color: #d32f2f;
+              margin-bottom: 20px;
+            }
+            p {
+              color: #666;
+            }
+            .error-icon {
+              font-size: 60px;
+              margin-bottom: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="error-icon">❌</div>
+            <h1>Authorization Failed</h1>
+            <p>There was an error connecting your app. Please try again or contact support.</p>
+            <p style="font-size: 12px; color: #999;">${error.message}</p>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+});
+
+// App uninstall webhook
+app.post('/oauth/uninstall', async (req: Request, res: Response) => {
+  console.log('[OAUTH UNINSTALL] App uninstall webhook received');
+
+  let body = req.body;
+  if (Buffer.isBuffer(req.body)) {
+    const bodyString = req.body.toString('utf8');
+    const parsed = JSON.parse(bodyString);
+    body = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+  }
+
+  const portalId = body.portalId || body.origin?.portalId;
+
+  if (!portalId) {
+    console.error('[OAUTH UNINSTALL] No portal ID in uninstall webhook');
+    return res.status(400).json({ error: 'Missing portal ID' });
+  }
+
+  try {
+    await deleteTokens(parseInt(portalId, 10));
+    console.log(`[OAUTH UNINSTALL] Deleted tokens for portal ${portalId}`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[OAUTH UNINSTALL] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Search plants endpoint
@@ -583,6 +727,10 @@ app.post('/api/plants/associate', async (req: Request, res: Response) => {
   }
 });
 
+// Import OAuth utilities
+import { getValidAccessToken } from './oauth';
+import { extractPortalId } from './authMiddleware';
+
 // Workflow action: Water plant endpoint
 app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
   console.log('[WATER PLANT WORKFLOW] Request received');
@@ -607,6 +755,15 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
     console.error('[WATER PLANT WORKFLOW] Failed to parse body:', error);
     return res.status(400).json({ error: 'Invalid JSON in request body' });
   }
+
+  // Get portal ID from request
+  const portalId = extractPortalId(body);
+  if (!portalId) {
+    console.error('[WATER PLANT WORKFLOW] No portal ID found');
+    return res.status(400).json({ error: 'Missing portal ID in request' });
+  }
+
+  console.log(`[WATER PLANT WORKFLOW] Portal ID: ${portalId}`);
 
   // Extract data from HubSpot workflow action payload
   // HubSpot can send data in different formats, so check multiple possible structures
@@ -653,13 +810,9 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
   // The workflow is running on the plant object, so we have the plantId
   console.log('[WATER PLANT WORKFLOW] Will proceed with plantId:', plantId);
 
-  const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
-
-  if (!accessToken) {
-    return res.status(500).json({ error: 'HubSpot access token not configured' });
-  }
-
   try {
+    // Get OAuth token for this portal (auto-refreshes if expired)
+    const accessToken = await getValidAccessToken(portalId);
     const hubspotClient = new Client({ accessToken });
 
     // If contactId is not provided, try to get it from associations
@@ -727,50 +880,11 @@ app.post('/api/workflow/water-plant', async (req: Request, res: Response) => {
 
     console.log(`[WATER PLANT WORKFLOW] Successfully updated plant ${plantId}`);
 
-    // Send notification to associated contact if found
-    let notificationSent = false;
-    if (contactId) {
-      try {
-        console.log(`[WATER PLANT WORKFLOW] Sending notification to contact ${contactId}`);
-
-        // Create an engagement (note) on the contact's timeline
-        await hubspotClient.crm.objects.notes.basicApi.create({
-          properties: {
-            hs_timestamp: new Date().getTime().toString(),
-            hs_note_body: `🌱 Your plant "${plant.properties.plant_name}" has been watered! Next watering scheduled for ${nextWateringDateString}.`
-          },
-          associations: [
-            {
-              to: { id: contactId },
-              types: [
-                {
-                  associationCategory: 'HUBSPOT_DEFINED',
-                  associationTypeId: 202 // Note to Contact association
-                }
-              ]
-            }
-          ]
-        });
-
-        console.log(`[WATER PLANT WORKFLOW] Notification sent to contact ${contactId}`);
-        notificationSent = true;
-      } catch (notificationError: any) {
-        console.error(`[WATER PLANT WORKFLOW] Failed to send notification:`, {
-          message: notificationError.message,
-          statusCode: notificationError.statusCode,
-          body: notificationError.body
-        });
-        // Don't fail the whole workflow if notification fails
-      }
-    }
-
     // Return success response to HubSpot
     res.json({
       outputFields: {
         success: true,
-        nextWateringDate: nextWateringDateString,
-        notificationSent: notificationSent,
-        contactId: contactId || 'none'
+        nextWateringDate: nextWateringDateString
       }
     });
   } catch (error: any) {

@@ -4,9 +4,9 @@
   "config": {
     "description": "Plant care tracking app with Perenual API integration",
     "name": "Plant Care Assistant",
-    "distribution": "private",
+    "distribution": "marketplace",
     "auth": {
-      "type": "static",
+      "type": "oauth",
       "requiredScopes": [
         "crm.objects.contacts.read",
         "crm.objects.contacts.write",
