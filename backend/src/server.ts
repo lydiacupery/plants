@@ -103,6 +103,39 @@ app.get('/', (req: Request, res: Response) => {
   res.json({ status: 'Plant Care API is running' });
 });
 
+// OAuth installation initiation endpoint
+app.get('/oauth/install', (req: Request, res: Response) => {
+  const CLIENT_ID = process.env.HUBSPOT_CLIENT_ID;
+  const REDIRECT_URI = process.env.HUBSPOT_REDIRECT_URI || 'https://plants-production-a263.up.railway.app/oauth/callback';
+
+  if (!CLIENT_ID) {
+    return res.status(500).send('OAuth not configured. Please set HUBSPOT_CLIENT_ID environment variable.');
+  }
+
+  // Scopes required by your app
+  const SCOPES = [
+    'crm.objects.contacts.read',
+    'crm.objects.contacts.write',
+    'crm.schemas.custom.read',
+    'crm.schemas.custom.write',
+    'crm.objects.custom.read',
+    'crm.objects.custom.write'
+  ].join('%20');
+
+  // Generate a random state for CSRF protection
+  const state = Math.random().toString(36).substring(7);
+
+  // Build the authorization URL
+  const authUrl = 'https://app.hubspot.com/oauth/authorize' +
+    `?client_id=${encodeURIComponent(CLIENT_ID)}` +
+    `&scope=${SCOPES}` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+    `&state=${state}`;
+
+  console.log('[OAUTH INSTALL] Redirecting to HubSpot authorization page');
+  res.redirect(authUrl);
+});
+
 // OAuth callback endpoint
 app.get('/oauth/callback', async (req: Request, res: Response) => {
   const { code } = req.query;
