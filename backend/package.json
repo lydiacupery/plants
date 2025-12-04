@@ -4,8 +4,8 @@
   "description": "Backend proxy for Perenual API",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc && yarn migrate:safe",
-    "start": "node dist/server.js",
+    "build": "tsc",
+    "start": "node scripts/migrate.js && node dist/server.js",
     "dev": "ts-node src/server.ts",
     "watch": "tsc --watch",
     "migrate": "node scripts/migrate.js",
