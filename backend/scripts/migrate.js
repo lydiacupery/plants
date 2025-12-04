@@ -6,17 +6,21 @@ const path = require('path');
 async function runMigrations() {
   console.log('[MIGRATION] Starting database migrations...');
   console.log('[MIGRATION] NODE_ENV:', process.env.NODE_ENV);
-  console.log('[MIGRATION] DATABASE_URL exists:', !!process.env.DATABASE_URL);
 
-  if (!process.env.DATABASE_URL) {
-    console.log('[MIGRATION] No DATABASE_URL found - skipping migrations (development mode?)');
+  const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+  console.log('[MIGRATION] DATABASE_PUBLIC_URL exists:', !!process.env.DATABASE_PUBLIC_URL);
+  console.log('[MIGRATION] DATABASE_URL exists:', !!process.env.DATABASE_URL);
+  console.log('[MIGRATION] Using database URL:', databaseUrl ? 'found' : 'not found');
+
+  if (!databaseUrl) {
+    console.log('[MIGRATION] No DATABASE_PUBLIC_URL or DATABASE_URL found - skipping migrations (development mode?)');
     process.exit(0);
   }
 
-  console.log('[MIGRATION] Using DATABASE_URL starting with:', process.env.DATABASE_URL.substring(0, 20) + '...');
+  console.log('[MIGRATION] Using database URL starting with:', databaseUrl.substring(0, 20) + '...');
 
   const client = new Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: databaseUrl,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
   });
 
