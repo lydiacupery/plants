@@ -13,8 +13,6 @@
       "requiredScopes": [
         "crm.objects.contacts.read",
         "crm.objects.contacts.write",
-        "crm.schemas.custom.read",
-        "crm.schemas.custom.write",
         "crm.objects.custom.read",
         "crm.objects.custom.write"
       ],
