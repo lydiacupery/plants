@@ -29,12 +29,17 @@ export async function exchangeCodeForTokens(code: string): Promise<TokenData> {
 
     console.log('[OAUTH] Successfully exchanged code for tokens');
 
+    // Get token info to retrieve portal ID (hubId)
+    const tokenInfo = await hubspotClient.oauth.accessTokensApi.get(tokenResponse.accessToken);
+
+    console.log(`[OAUTH] Retrieved token info for portal ${tokenInfo.hubId}`);
+
     // Calculate expiration time
     const expiresIn = tokenResponse.expiresIn || 1800; // Default 30 minutes
     const expiresAt = Date.now() + (expiresIn * 1000);
 
     const tokenData: TokenData = {
-      portalId: parseInt(tokenResponse.hubId || '0', 10),
+      portalId: tokenInfo.hubId,
       accessToken: tokenResponse.accessToken,
       refreshToken: tokenResponse.refreshToken,
       expiresAt
