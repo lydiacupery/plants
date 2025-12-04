@@ -7,6 +7,9 @@
     "distribution": "marketplace",
     "auth": {
       "type": "oauth",
+      "redirectUrls": [
+        "https://plants-production-a263.up.railway.app/oauth/callback"
+      ],
       "requiredScopes": [
         "crm.objects.contacts.read",
         "crm.objects.contacts.write",
